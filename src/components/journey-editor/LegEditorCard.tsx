@@ -1,23 +1,34 @@
 import React, { useState } from "react";
-import type { JourneyLeg, TransportMode, ValueSource } from "../../features/journey/journeyTypes";
-import { buildGoogleMapsSearchUrl, buildGoogleMapsLegUrl } from "../../features/journey/journeyMapLinks";
+import type {
+  JourneyLeg,
+  TransportMode,
+  FareStatus,
+  GeoLocation,
+} from "../../features/journey/journeyTypes";
+import { LocationSelector } from "../geo/LocationSelector";
+import { MapPickerDialog } from "../geo/MapPickerDialog";
+import { fetchLegRouteGeometry } from "../../features/geo/routingService";
+import { estimateLegFare } from "../../features/fare/fareCalculator";
+import { buildGoogleMapsLegUrl } from "../../features/journey/journeyMapLinks";
 import {
   Train,
   Bus,
   Car,
   Footprints,
+  Ship,
   Compass,
   ArrowDown,
   ArrowUp,
   Trash2,
+  Copy,
   IndianRupee,
   Clock,
   Info,
-  MapPin,
   Navigation,
   ExternalLink,
   ChevronDown,
   ChevronUp,
+  Calculator,
 } from "lucide-react";
 
 interface LegEditorCardProps {
@@ -26,24 +37,34 @@ interface LegEditorCardProps {
   totalLegs: number;
   onUpdate: (updates: Partial<JourneyLeg>) => void;
   onDelete: () => void;
+  onDuplicate: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }
 
-const MODES: { mode: TransportMode; label: string; icon: React.FC<{ className?: string }> }[] = [
-  { mode: "train", label: "Train", icon: Train },
-  { mode: "bus", label: "Bus", icon: Bus },
-  { mode: "auto", label: "Auto-Rickshaw", icon: Car },
-  { mode: "taxi", label: "Taxi / Car", icon: Car },
-  { mode: "walking", label: "Walking", icon: Footprints },
-  { mode: "other", label: "Ferry / Other", icon: Compass },
+const MODES: {
+  mode: TransportMode;
+  label: string;
+  icon: React.FC<{ className?: string }>;
+  accentColor: string;
+}[] = [
+  { mode: "train", label: "Train", icon: Train, accentColor: "#4f46e5" },
+  { mode: "ksrtc_bus", label: "KSRTC Bus", icon: Bus, accentColor: "#ea580c" },
+  { mode: "private_bus", label: "Private Bus", icon: Bus, accentColor: "#d97706" },
+  { mode: "auto", label: "Auto-Rickshaw", icon: Car, accentColor: "#16a34a" },
+  { mode: "taxi", label: "Taxi / Cab", icon: Car, accentColor: "#2563eb" },
+  { mode: "car", label: "Private Car", icon: Car, accentColor: "#0284c7" },
+  { mode: "walking", label: "Walking", icon: Footprints, accentColor: "#0d9488" },
+  { mode: "ferry", label: "Ferry / Boat", icon: Ship, accentColor: "#9333ea" },
+  { mode: "other", label: "Other", icon: Compass, accentColor: "#64748b" },
 ];
 
-const SOURCES: { value: ValueSource; label: string }[] = [
-  { value: "unknown", label: "Unknown / Unpriced" },
-  { value: "organiser", label: "Organiser Estimate" },
-  { value: "user", label: "User Entered" },
-  { value: "curated", label: "Verified Data" },
+const FARE_STATUS_OPTIONS: { value: FareStatus; label: string }[] = [
+  { value: "estimated_fare", label: "Configured Route Estimate" },
+  { value: "verified_tariff", label: "Verified Govt Tariff" },
+  { value: "organiser_provided", label: "Organiser Fixed Rate" },
+  { value: "user_entered", label: "Manual User Fare" },
+  { value: "unknown", label: "Unknown / Variable" },
 ];
 
 export const LegEditorCard: React.FC<LegEditorCardProps> = ({
@@ -52,13 +73,82 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
   totalLegs,
   onUpdate,
   onDelete,
+  onDuplicate,
   onMoveUp,
   onMoveDown,
 }) => {
   const [showMapSettings, setShowMapSettings] = useState(false);
+  const [mapPickerTarget, setMapPickerTarget] = useState<"from" | "to" | null>(null);
+
+  const calculateRouteAndFare = async (
+    fromLoc?: GeoLocation,
+    toLoc?: GeoLocation,
+    modeToUse: TransportMode = leg.mode
+  ) => {
+    const origin = fromLoc || leg.fromLocation;
+    const dest = toLoc || leg.toLocation;
+
+    if (!origin || !dest) return;
+
+    try {
+      const geometry = await fetchLegRouteGeometry(
+        origin.lat,
+        origin.lng,
+        dest.lat,
+        dest.lng,
+        modeToUse
+      );
+
+      const fareResult = estimateLegFare(modeToUse, geometry.distanceKm);
+
+      onUpdate({
+        geometry,
+        distanceKm: geometry.distanceKm,
+        durationMinutes: {
+          value: geometry.durationMinutes,
+          source: "external",
+          note: geometry.isStraightLineFallback ? "Direct estimate" : "OSRM road estimate",
+        },
+        fare: {
+          value: fareResult.fare,
+          source: fareResult.source,
+          fareStatus: fareResult.fareStatus,
+          note: fareResult.note,
+          isCalculated: true,
+        },
+      });
+    } catch (err) {
+      console.error("Failed to calculate route geometry", err);
+    }
+  };
 
   const handleModeChange = (mode: TransportMode) => {
     onUpdate({ mode });
+    if (leg.fromLocation && leg.toLocation) {
+      calculateRouteAndFare(leg.fromLocation, leg.toLocation, mode);
+    }
+  };
+
+  const handleFromSelect = (loc: GeoLocation) => {
+    onUpdate({
+      from: loc.name,
+      fromLocation: loc,
+      fromCoords: `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`,
+    });
+    if (leg.toLocation) {
+      calculateRouteAndFare(loc, leg.toLocation);
+    }
+  };
+
+  const handleToSelect = (loc: GeoLocation) => {
+    onUpdate({
+      to: loc.name,
+      toLocation: loc,
+      toCoords: `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`,
+    });
+    if (leg.fromLocation) {
+      calculateRouteAndFare(leg.fromLocation, loc);
+    }
   };
 
   const handleFareChange = (valStr: string) => {
@@ -67,7 +157,9 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
       fare: {
         ...leg.fare,
         value: isNaN(val as number) ? null : val,
-        source: leg.fare.source === "unknown" && val !== null ? "user" : leg.fare.source,
+        fareStatus: val === null ? "unknown" : "user_entered",
+        source: "user",
+        isCalculated: false,
       },
     });
   };
@@ -78,54 +170,100 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
       durationMinutes: {
         ...leg.durationMinutes,
         value: isNaN(val as number) ? null : val,
+        source: "user",
       },
     });
   };
 
+  const currentModeObj = MODES.find((m) => m.mode === leg.mode) || MODES[0];
+
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-4 mb-3 relative transition hover:border-slate-300/80">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
-        <div className="flex items-center space-x-2">
-          <span className="w-6 h-6 rounded-full bg-slate-900 text-white font-extrabold text-xs flex items-center justify-center font-display">
+    <div
+      className="rounded-2xl border p-4 mb-3.5 relative transition-all duration-200 shadow-xs"
+      style={{
+        backgroundColor: "var(--color-bg-elevated)",
+        borderColor: "var(--color-border)",
+      }}
+    >
+      {/* Leg Header */}
+      <div
+        className="flex items-center justify-between border-b pb-3 mb-3.5"
+        style={{ borderColor: "var(--color-border-subtle)" }}
+      >
+        <div className="flex items-center space-x-2.5">
+          <span
+            className="w-6 h-6 rounded-lg text-white font-extrabold text-xs flex items-center justify-center font-display shadow-xs"
+            style={{ backgroundColor: currentModeObj.accentColor }}
+          >
             {index + 1}
           </span>
-          <span className="text-xs font-bold font-display text-slate-800 uppercase tracking-wide">
-            Transport Leg #{index + 1}
+          <span
+            className="text-xs font-bold font-display uppercase tracking-wider"
+            style={{ color: "var(--color-text)" }}
+          >
+            Leg #{index + 1} • {currentModeObj.label}
           </span>
+
+          {leg.distanceKm && (
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full font-mono tabular-nums"
+              style={{
+                backgroundColor: "var(--color-accent-subtle)",
+                color: "var(--color-accent)",
+              }}
+            >
+              {leg.distanceKm} km
+            </span>
+          )}
         </div>
 
         <div className="flex items-center space-x-1">
           <button
+            type="button"
+            onClick={onDuplicate}
+            className="p-1 rounded-lg transition-colors hover:bg-slate-500/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            title="Duplicate this leg"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
             disabled={index === 0}
             onClick={onMoveUp}
-            className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+            className="p-1 rounded-lg transition-colors hover:bg-slate-500/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30"
             title="Move leg up"
           >
-            <ArrowUp className="w-4 h-4" />
+            <ArrowUp className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             disabled={index === totalLegs - 1}
             onClick={onMoveDown}
-            className="p-1 rounded text-slate-400 hover:text-slate-700 disabled:opacity-30 disabled:hover:text-slate-400"
+            className="p-1 rounded-lg transition-colors hover:bg-slate-500/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30"
             title="Move leg down"
           >
-            <ArrowDown className="w-4 h-4" />
+            <ArrowDown className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={onDelete}
-            className="p-1 rounded text-rose-500 hover:bg-rose-50 hover:text-rose-600 transition ml-1"
+            className="p-1 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors ml-1"
             title="Delete leg"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="mb-4">
-        <label className="block text-xs font-semibold text-slate-500 mb-1.5">
-          Transport Vehicle / Mode (Selection on every leg)
+      {/* Mode Selector Pill Buttons */}
+      <div className="mb-3.5">
+        <label
+          className="block text-[11px] font-semibold uppercase tracking-wider mb-2"
+          style={{ color: "var(--color-text-muted)" }}
+        >
+          Vehicle / Mode on this Leg
         </label>
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
           {MODES.map((item) => {
             const Icon = item.icon;
             const isSelected = leg.mode === item.mode;
@@ -134,169 +272,207 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
                 key={item.mode}
                 type="button"
                 onClick={() => handleModeChange(item.mode)}
-                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition ${
-                  isSelected
-                    ? "bg-amber-500 text-slate-950 border-amber-500 font-bold shadow-sm"
-                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 font-medium"
+                className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-xs font-semibold transition-all duration-150 ${
+                  isSelected ? "shadow-sm scale-[1.02]" : "opacity-80 hover:opacity-100"
                 }`}
+                style={{
+                  backgroundColor: isSelected ? item.accentColor : "var(--color-bg-subtle)",
+                  borderColor: isSelected ? item.accentColor : "var(--color-border)",
+                  color: isSelected ? "#ffffff" : "var(--color-text)",
+                }}
               >
-                <Icon className="w-4 h-4 mb-1" />
-                <span className="text-[11px] truncate w-full text-center">{item.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="text-[11px] truncate">{item.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-medium text-slate-500">
-              Boarding / Start Point
-            </label>
-            {leg.from && (
-              <a
-                href={buildGoogleMapsSearchUrl(leg.fromCoords || leg.from, "Kerala")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5 font-medium"
-                title="Test boarding location in Google Maps"
-              >
-                <MapPin className="w-2.5 h-2.5" />
-                <span>Test Pin</span>
-              </a>
-            )}
-          </div>
-          <input
-            type="text"
-            value={leg.from}
-            onChange={(e) => onUpdate({ from: e.target.value })}
-            placeholder="e.g. Kozhikode Railway Station"
-            className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
-          />
-        </div>
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-medium text-slate-500">
-              Alighting / Transfer Point
-            </label>
-            {leg.to && (
-              <a
-                href={buildGoogleMapsSearchUrl(leg.toCoords || leg.to, "Kerala")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-emerald-600 hover:text-emerald-800 flex items-center gap-0.5 font-medium"
-                title="Test alighting location in Google Maps"
-              >
-                <MapPin className="w-2.5 h-2.5" />
-                <span>Test Pin</span>
-              </a>
-            )}
-          </div>
-          <input
-            type="text"
-            value={leg.to}
-            onChange={(e) => onUpdate({ to: e.target.value })}
-            placeholder="e.g. Chest Hospital Bus Stop"
-            className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
-          />
-        </div>
+      {/* Real Location Pickers for Leg Start & End */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mb-3.5">
+        <LocationSelector
+          label="Boarding / Origin Stop"
+          value={leg.from}
+          selectedLocation={leg.fromLocation}
+          placeholder="e.g. Kozhikode Railway Station"
+          pinColor="emerald"
+          onSelect={handleFromSelect}
+          onOpenMapPicker={() => setMapPickerTarget("from")}
+        />
+
+        <LocationSelector
+          label="Alighting / Transfer Stop"
+          value={leg.to}
+          selectedLocation={leg.toLocation}
+          placeholder="e.g. Chest Hospital Bus Stop"
+          pinColor="rose"
+          onSelect={handleToSelect}
+          onOpenMapPicker={() => setMapPickerTarget("to")}
+        />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-              <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+      {/* Transparent Fare & Duration Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
+        <div
+          className="p-3 rounded-xl border space-y-1.5"
+          style={{
+            backgroundColor: "var(--color-bg-subtle)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <label
+              className="text-xs font-semibold flex items-center gap-1"
+              style={{ color: "var(--color-text)" }}
+            >
+              <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
               <span>Fare (₹ INR)</span>
             </label>
-            <select
-              value={leg.fare.source}
-              onChange={(e) =>
-                onUpdate({
-                  fare: { ...leg.fare, source: e.target.value as ValueSource },
-                })
-              }
-              className="text-[11px] bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none"
-            >
-              {SOURCES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <input
-            type="number"
-            value={leg.fare.value === null ? "" : leg.fare.value}
-            onChange={(e) => handleFareChange(e.target.value)}
-            placeholder={leg.mode === "walking" ? "0 (Free walking)" : "Leave blank if unknown"}
-            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
 
-        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-medium text-slate-600 flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
-              <span>Duration (Minutes)</span>
-            </label>
             <select
-              value={leg.durationMinutes.source}
+              value={leg.fare.fareStatus || "unknown"}
               onChange={(e) =>
                 onUpdate({
-                  durationMinutes: {
-                    ...leg.durationMinutes,
-                    source: e.target.value as ValueSource,
+                  fare: {
+                    ...leg.fare,
+                    fareStatus: e.target.value as FareStatus,
+                    source: e.target.value === "user_entered" ? "user" : "curated",
                   },
                 })
               }
-              className="text-[11px] bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none"
+              className="text-[10px] rounded-lg px-2 py-0.5 border outline-none font-medium"
+              style={{
+                backgroundColor: "var(--color-bg-elevated)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text-secondary)",
+              }}
             >
-              {SOURCES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
+              {FARE_STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
           </div>
+
+          <div className="relative">
+            <input
+              type="number"
+              value={leg.fare.value === null ? "" : leg.fare.value}
+              onChange={(e) => handleFareChange(e.target.value)}
+              placeholder={leg.mode === "walking" ? "0 (Free walking)" : "Leave blank if unknown"}
+              className="w-full px-3 py-1.5 rounded-lg border text-xs font-bold outline-none tabular-nums"
+              style={{
+                backgroundColor: "var(--color-bg-elevated)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
+            />
+            {leg.fare.isCalculated && (
+              <span
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-semibold flex items-center gap-1"
+                style={{ color: "var(--color-accent)" }}
+                title="Calculated from real road distance & official Kerala tariff"
+              >
+                <Calculator className="w-3 h-3" />
+                <span>Auto-tariff</span>
+              </span>
+            )}
+          </div>
+
+          {leg.fare.note && (
+            <p className="text-[10px] leading-tight" style={{ color: "var(--color-text-muted)" }}>
+              {leg.fare.note}
+            </p>
+          )}
+        </div>
+
+        <div
+          className="p-3 rounded-xl border space-y-1.5"
+          style={{
+            backgroundColor: "var(--color-bg-subtle)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <label
+              className="text-xs font-semibold flex items-center gap-1"
+              style={{ color: "var(--color-text)" }}
+            >
+              <Clock className="w-3.5 h-3.5 text-blue-500" />
+              <span>Duration (Minutes)</span>
+            </label>
+
+            <span className="text-[10px]" style={{ color: "var(--color-text-muted)" }}>
+              {leg.distanceKm ? `~${leg.distanceKm} km` : "Enter time"}
+            </span>
+          </div>
+
           <input
             type="number"
             value={leg.durationMinutes.value === null ? "" : leg.durationMinutes.value}
             onChange={(e) => handleDurationChange(e.target.value)}
             placeholder="Leave blank if unknown"
-            className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-1.5 rounded-lg border text-xs font-bold outline-none tabular-nums"
+            style={{
+              backgroundColor: "var(--color-bg-elevated)",
+              borderColor: "var(--color-border)",
+              color: "var(--color-text)",
+            }}
           />
+
+          <p className="text-[10px] leading-tight" style={{ color: "var(--color-text-muted)" }}>
+            {leg.durationMinutes.source === "external"
+              ? "Calculated from OSRM road geometry"
+              : "Estimated transfer & transit duration"}
+          </p>
         </div>
       </div>
 
+      {/* Boarding Instructions & Transfer Callouts */}
       <div className="mb-2">
-        <label className="block text-xs font-medium text-slate-500 mb-1 flex items-center gap-1">
-          <Info className="w-3.5 h-3.5 text-amber-600" />
-          <span>Instructions & Transfer Callout</span>
+        <label
+          className="block text-xs font-medium mb-1 flex items-center gap-1"
+          style={{ color: "var(--color-text-secondary)" }}
+        >
+          <Info className="w-3.5 h-3.5" style={{ color: "var(--color-accent)" }} />
+          <span>Boarding & Transfer Instructions</span>
         </label>
         <input
           type="text"
           value={leg.instructions || ""}
           onChange={(e) => onUpdate({ instructions: e.target.value })}
           placeholder="e.g. Board bus towards Mukkam. Ask conductor for Chest Hospital stop."
-          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:bg-white"
+          className="w-full px-3 py-1.5 rounded-xl border text-xs outline-none"
+          style={{
+            backgroundColor: "var(--color-bg-subtle)",
+            borderColor: "var(--color-border)",
+            color: "var(--color-text)",
+          }}
         />
       </div>
 
-      {/* Expandable Precise Map & Waypoint Settings */}
-      <div className="mt-3 pt-2.5 border-t border-slate-100">
+      {/* Expandable Deep-Link & Waypoint Details */}
+      <div className="pt-2 border-t" style={{ borderColor: "var(--color-border-subtle)" }}>
         <button
           type="button"
           onClick={() => setShowMapSettings((prev) => !prev)}
-          className="flex items-center justify-between w-full text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition py-1"
+          className="flex items-center justify-between w-full text-[11px] font-semibold transition-colors py-0.5"
+          style={{ color: "var(--color-text-secondary)" }}
         >
           <span className="flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-teal-600" />
-            <span>Map Navigation & GPS Waypoints (Optional)</span>
-            {(leg.fromCoords || leg.toCoords || leg.customMapUrl) && (
-              <span className="bg-teal-100 text-teal-800 text-[9px] px-1.5 py-0.2 rounded font-bold">
-                Configured
+            <Navigation className="w-3.5 h-3.5" style={{ color: "var(--color-accent)" }} />
+            <span>Map Coordinates & Verified Deep-links</span>
+            {leg.geometry && (
+              <span
+                className="text-[9px] px-1.5 py-0.2 rounded-full font-bold"
+                style={{
+                  backgroundColor: "var(--color-accent-subtle)",
+                  color: "var(--color-accent)",
+                }}
+              >
+                OSRM Geo Ready
               </span>
             )}
           </span>
@@ -304,49 +480,36 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
         </button>
 
         {showMapSettings && (
-          <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5 text-xs animate-in fade-in duration-150">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                  Boarding GPS / Landmark Anchor
-                </label>
-                <input
-                  type="text"
-                  value={leg.fromCoords || ""}
-                  onChange={(e) => onUpdate({ fromCoords: e.target.value })}
-                  placeholder="e.g. 11.2588, 75.7804 or Station Gate 2"
-                  className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-teal-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                  Alighting GPS / Landmark Anchor
-                </label>
-                <input
-                  type="text"
-                  value={leg.toCoords || ""}
-                  onChange={(e) => onUpdate({ toCoords: e.target.value })}
-                  placeholder="e.g. 11.2650, 75.7950 or Main Auto Stand"
-                  className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-teal-500"
-                />
-              </div>
-            </div>
-
+          <div
+            className="mt-2.5 p-3 rounded-xl border space-y-2.5 text-xs animate-in fade-in duration-150"
+            style={{
+              backgroundColor: "var(--color-bg-subtle)",
+              borderColor: "var(--color-border)",
+            }}
+          >
             <div>
-              <label className="block text-[11px] font-medium text-slate-600 mb-1">
-                Custom Direct Map URL (Overrides Auto Directions)
+              <label
+                className="block text-[11px] font-medium mb-1"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Custom Map / Transit URL Override (Optional)
               </label>
               <input
                 type="text"
                 value={leg.customMapUrl || ""}
                 onChange={(e) => onUpdate({ customMapUrl: e.target.value })}
-                placeholder="e.g. https://maps.app.goo.gl/... or custom OpenStreetMap link"
-                className="w-full px-2.5 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-teal-500"
+                placeholder="e.g. https://maps.app.goo.gl/... or custom schedule link"
+                className="w-full px-2.5 py-1 rounded-lg border text-xs font-mono outline-none"
+                style={{
+                  backgroundColor: "var(--color-bg-elevated)",
+                  borderColor: "var(--color-border)",
+                  color: "var(--color-text)",
+                }}
               />
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500">
-              <span>Preview leg link:</span>
+            <div className="flex items-center justify-between pt-1 text-[11px]">
+              <span style={{ color: "var(--color-text-muted)" }}>Directions verify:</span>
               <a
                 href={buildGoogleMapsLegUrl(leg.from, leg.to, leg.mode, "Kerala", {
                   customMapUrl: leg.customMapUrl,
@@ -355,16 +518,32 @@ export const LegEditorCard: React.FC<LegEditorCardProps> = ({
                 })}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-semibold text-emerald-600 hover:text-emerald-700"
+                className="inline-flex items-center gap-1 font-semibold hover:underline"
+                style={{ color: "var(--color-accent)" }}
               >
                 <Navigation className="w-3 h-3" />
-                <span>Test Directions in Google Maps</span>
+                <span>Open in Google Maps</span>
                 <ExternalLink className="w-2.5 h-2.5" />
               </a>
             </div>
           </div>
         )}
       </div>
+
+      {/* Map Picker Modal for leg start/end */}
+      <MapPickerDialog
+        isOpen={mapPickerTarget !== null}
+        title={mapPickerTarget === "from" ? `Select Stop ${index + 1} Origin on Map` : `Select Stop ${index + 1} Destination on Map`}
+        initialLocation={mapPickerTarget === "from" ? leg.fromLocation : leg.toLocation}
+        onConfirm={(loc) => {
+          if (mapPickerTarget === "from") {
+            handleFromSelect(loc);
+          } else {
+            handleToSelect(loc);
+          }
+        }}
+        onClose={() => setMapPickerTarget(null)}
+      />
     </div>
   );
 };

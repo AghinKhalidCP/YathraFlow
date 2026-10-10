@@ -1,4 +1,8 @@
-import type { JourneyLeg, CostSummaryResult, DurationSummaryResult } from "./journeyTypes";
+import type {
+  JourneyLeg,
+  CostSummaryResult,
+  DurationSummaryResult,
+} from "./journeyTypes";
 
 /**
  * Calculates financial summaries safely without treating unknown fares as zero.
@@ -26,14 +30,15 @@ export function calculateRouteCostSummary(legs: JourneyLeg[]): CostSummaryResult
     } else {
       knownSubtotal += leg.fare.value;
       knownFareLegCount++;
-      if (leg.fare.source === "organiser" || leg.fare.source === "curated" || leg.fare.source === "external") {
-        estimates.push({
-          source: leg.fare.source,
-          amount: leg.fare.value,
-          note: leg.fare.note,
-          legDescription: `${leg.from} → ${leg.to} (${leg.mode})`,
-        });
-      }
+      const fareStatus = leg.fare.fareStatus || (leg.fare.source === "user" ? "user_entered" : "estimated_fare");
+      estimates.push({
+        source: leg.fare.source,
+        fareStatus,
+        amount: leg.fare.value,
+        note: leg.fare.note,
+        legDescription: `${leg.from || "Origin"} → ${leg.to || "Destination"}`,
+        mode: leg.mode,
+      });
     }
   }
 
@@ -53,16 +58,25 @@ export function calculateRouteCostSummary(legs: JourneyLeg[]): CostSummaryResult
 }
 
 /**
- * Aggregates known travel durations in minutes and breaks down walking vs vehicle time.
+ * Aggregates known travel durations in minutes and breaks down walking vs vehicle time and distance.
  */
 export function calculateRouteDurationSummary(legs: JourneyLeg[]): DurationSummaryResult {
   let knownTotalMinutes = 0;
   let walkingMinutes = 0;
   let vehicleMinutes = 0;
+  let walkingDistanceKm = 0;
+  let totalDistanceKm = 0;
   let unknownDurationLegCount = 0;
   let knownDurationLegCount = 0;
 
   for (const leg of legs) {
+    if (leg.distanceKm) {
+      totalDistanceKm += leg.distanceKm;
+      if (leg.mode === "walking") {
+        walkingDistanceKm += leg.distanceKm;
+      }
+    }
+
     if (leg.durationMinutes.value === null) {
       unknownDurationLegCount++;
     } else {
@@ -83,6 +97,8 @@ export function calculateRouteDurationSummary(legs: JourneyLeg[]): DurationSumma
     knownTotalMinutes,
     walkingMinutes,
     vehicleMinutes,
+    walkingDistanceKm: Math.round(walkingDistanceKm * 10) / 10,
+    totalDistanceKm: Math.round(totalDistanceKm * 10) / 10,
     hasUnknownDurations: unknownDurationLegCount > 0,
     unknownDurationLegCount,
     knownDurationLegCount,

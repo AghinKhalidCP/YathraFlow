@@ -23,7 +23,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ journey }) => {
             <Compass className="w-8 h-8 text-slate-900" />
             <h1 className="text-3xl font-black tracking-tight text-slate-900">YathraFlow</h1>
           </div>
-          <p className="text-sm font-semibold text-slate-600">Multimodal Travel Guide</p>
+          <p className="text-sm font-semibold text-slate-600">Kerala Multimodal Travel Guide</p>
         </div>
         <div className="text-right text-xs text-slate-500">
           <div>Generated on: {generatedDate}</div>
@@ -32,7 +32,7 @@ export const PrintView: React.FC<PrintViewProps> = ({ journey }) => {
       </div>
 
       <div className="bg-slate-100 p-4 rounded-xl border border-slate-300 mb-6">
-        <h2 className="text-xl font-bold text-slate-900 mb-2">{journey.title}</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">{journey.title || "Kerala Journey"}</h2>
         <div className="grid grid-cols-2 gap-4 text-xs">
           <div>
             <span className="font-bold text-slate-500 uppercase">From:</span>{" "}
@@ -71,13 +71,13 @@ export const PrintView: React.FC<PrintViewProps> = ({ journey }) => {
               <tr key={leg.id} className="border border-slate-300 print-break-inside-avoid">
                 <td className="p-2.5 border border-slate-300 font-bold">{idx + 1}</td>
                 <td className="p-2.5 border border-slate-300 font-bold uppercase text-[11px]">
-                  {leg.mode}
+                  {leg.mode.replace("_", " ")}
                 </td>
                 <td className="p-2.5 border border-slate-300 font-medium">
                   <div>{leg.from} ➔ {leg.to}</div>
-                  {(leg.fromCoords || leg.toCoords) && (
+                  {leg.distanceKm && (
                     <div className="text-[9px] text-slate-500 font-mono mt-0.5">
-                      GPS: {leg.fromCoords || "search"} → {leg.toCoords || "search"}
+                      Distance: {leg.distanceKm} km
                     </div>
                   )}
                 </td>
@@ -110,12 +110,12 @@ export const PrintView: React.FC<PrintViewProps> = ({ journey }) => {
         )}
         {duration && (
           <div>
-            <span className="font-bold uppercase text-slate-500 block mb-1">Time Summary:</span>
+            <span className="font-bold uppercase text-slate-500 block mb-1">Time & Distance:</span>
             <div className="text-base font-bold text-slate-900">
               Known Duration: {duration.knownTotalMinutes} Mins
             </div>
             <p className="text-[11px] text-slate-600">
-              Includes {duration.walkingMinutes} Mins walking time.
+              Total Distance: ~{duration.totalDistanceKm} km (Walking: {duration.walkingMinutes} Mins / {duration.walkingDistanceKm} km)
             </p>
           </div>
         )}

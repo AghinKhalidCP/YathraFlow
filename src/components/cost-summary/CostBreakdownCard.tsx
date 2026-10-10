@@ -1,6 +1,6 @@
 import React from "react";
 import type { CostSummaryResult } from "../../features/journey/journeyTypes";
-import { IndianRupee, ShieldAlert } from "lucide-react";
+import { IndianRupee, ShieldCheck, ShieldAlert } from "lucide-react";
 
 interface CostBreakdownCardProps {
   summary: CostSummaryResult;
@@ -8,73 +8,129 @@ interface CostBreakdownCardProps {
 
 export const CostBreakdownCard: React.FC<CostBreakdownCardProps> = ({ summary }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-4 mb-4">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-display">
-          <IndianRupee className="w-4 h-4 text-emerald-600" />
+    <div
+      className="rounded-2xl border p-4 sm:p-5 shadow-xs transition-all duration-200"
+      style={{
+        backgroundColor: "var(--color-bg-elevated)",
+        borderColor: "var(--color-border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between mb-3 border-b pb-2.5"
+        style={{ borderColor: "var(--color-border-subtle)" }}
+      >
+        <h3
+          className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-display"
+          style={{ color: "var(--color-text)" }}
+        >
+          <IndianRupee className="w-4 h-4 text-emerald-500" />
           <span>Fare & Cost Breakdown</span>
         </h3>
+
         <span
-          className={`text-[10px] font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
-            summary.isFullyPriced
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200/80"
-              : "bg-amber-50 text-amber-900 border-amber-200/80"
-          }`}
+          className="text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1"
+          style={{
+            backgroundColor: summary.isFullyPriced ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
+            color: summary.isFullyPriced ? "#10b981" : "#f59e0b",
+          }}
         >
-          {summary.isFullyPriced ? "Fully Priced" : "Partial Subtotal"}
+          {summary.isFullyPriced ? (
+            <>
+              <ShieldCheck className="w-3 h-3" />
+              <span>Fully Priced</span>
+            </>
+          ) : (
+            <>
+              <ShieldAlert className="w-3 h-3" />
+              <span>Partial Subtotal</span>
+            </>
+          )}
         </span>
       </div>
 
-      <div className="bg-slate-900 text-white rounded-xl p-4 mb-3 flex items-center justify-between shadow-xs">
+      {/* Main Totals Card */}
+      <div
+        className="rounded-xl p-4 mb-3 flex items-center justify-between text-white shadow-sm"
+        style={{
+          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+        }}
+      >
         <div>
           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-            {summary.isFullyPriced ? "Total Journey Cost" : "Known Fare Subtotal"}
+            {summary.isFullyPriced ? "Total Journey Fare" : "Known Fare Subtotal"}
           </span>
-          <div className="text-2xl font-extrabold font-display text-white tabular-nums">
+          <div className="text-2xl font-black font-display tracking-tight text-white tabular-nums">
             ₹{summary.knownSubtotal}
           </div>
         </div>
 
         <div className="text-right">
-          <div className="text-xs text-slate-300 font-medium tabular-nums">
+          <div className="text-xs text-slate-300 font-semibold tabular-nums">
             {summary.knownFareLegCount} of {summary.totalLegCount} Legs Priced
           </div>
           {summary.walkingLegCount > 0 && (
-            <div className="text-[11px] text-emerald-400 font-medium">
+            <div className="text-[10px] text-teal-400 font-medium mt-0.5">
               ({summary.walkingLegCount} free walking leg{summary.walkingLegCount > 1 ? "s" : ""})
             </div>
           )}
         </div>
       </div>
 
+      {/* Transparent Pricing Disclaimer */}
       {summary.hasUnknownFares && (
-        <div className="bg-amber-50/70 border border-amber-200/80 rounded-xl p-3 mb-3 text-xs text-amber-900 leading-relaxed flex items-start space-x-2">
-          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div
+          className="rounded-xl p-3 mb-3 text-xs leading-relaxed flex items-start space-x-2 border"
+          style={{
+            backgroundColor: "rgba(245, 158, 11, 0.08)",
+            borderColor: "rgba(245, 158, 11, 0.25)",
+            color: "var(--color-text)",
+          }}
+        >
+          <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <div>
-            <span className="font-bold">Honest Pricing Guarantee:</span>{" "}
-            {summary.unknownFareLegCount} leg{summary.unknownFareLegCount > 1 ? "s" : ""} have unpriced or variable fares (e.g. local bus ticket). The subtotal above only includes verified fares and does not silently treat unknown fares as ₹0.
+            <span className="font-bold text-amber-600 dark:text-amber-400">Fare Transparency:</span>{" "}
+            {summary.unknownFareLegCount} leg{summary.unknownFareLegCount > 1 ? "s" : ""} currently have unpriced or variable fares. The subtotal above does not silently treat unpriced transport as ₹0.
           </div>
         </div>
       )}
 
+      {/* Itemized Fare Provenance */}
       {summary.estimates.length > 0 && (
-        <div className="space-y-2 border-t border-slate-100 pt-2.5">
-          <span className="text-[11px] font-semibold text-slate-500 block">
-            Fare Estimates & Provenance:
+        <div className="space-y-2 border-t pt-2.5" style={{ borderColor: "var(--color-border-subtle)" }}>
+          <span className="text-[11px] font-semibold block" style={{ color: "var(--color-text-muted)" }}>
+            Itemized Fare Provenance:
           </span>
           {summary.estimates.map((est, idx) => (
             <div
               key={idx}
-              className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-2.5 text-xs flex items-center justify-between"
+              className="rounded-xl p-2.5 text-xs flex items-center justify-between border"
+              style={{
+                backgroundColor: "var(--color-bg-subtle)",
+                borderColor: "var(--color-border)",
+              }}
             >
-              <div>
-                <span className="font-semibold text-slate-800">{est.legDescription}</span>
-                {est.note && <p className="text-[11px] text-slate-500 italic">{est.note}</p>}
+              <div className="min-w-0 flex-1 pr-2">
+                <span className="font-semibold truncate block" style={{ color: "var(--color-text)" }}>
+                  {est.legDescription}
+                </span>
+                {est.note && (
+                  <p className="text-[10px] truncate" style={{ color: "var(--color-text-muted)" }}>
+                    {est.note}
+                  </p>
+                )}
               </div>
-              <div className="text-right">
-                <span className="font-bold text-slate-900 tabular-nums">₹{est.amount}</span>
-                <span className="block text-[9px] text-amber-800 bg-amber-100/90 px-1.5 py-0.2 rounded-full font-semibold uppercase">
-                  {est.source}
+              <div className="text-right shrink-0">
+                <span className="font-bold tabular-nums" style={{ color: "var(--color-text)" }}>
+                  ₹{est.amount}
+                </span>
+                <span
+                  className="block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-full mt-0.5"
+                  style={{
+                    backgroundColor: "var(--color-accent-subtle)",
+                    color: "var(--color-accent)",
+                  }}
+                >
+                  {est.fareStatus.replace("_", " ")}
                 </span>
               </div>
             </div>

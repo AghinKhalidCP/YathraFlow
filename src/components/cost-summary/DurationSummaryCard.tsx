@@ -8,49 +8,95 @@ interface DurationSummaryCardProps {
 
 export const DurationSummaryCard: React.FC<DurationSummaryCardProps> = ({ summary }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-xs border border-slate-200/80 p-4 mb-4">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
-        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5 font-display">
-          <Clock className="w-4 h-4 text-indigo-600" />
-          <span>Duration & Travel Time</span>
-        </h3>
-        <span
-          className={`text-[10px] font-semibold tracking-wide px-2.5 py-0.5 rounded-full border ${
-            summary.isFullyTimed
-              ? "bg-indigo-50 text-indigo-800 border-indigo-200/80"
-              : "bg-slate-100 text-slate-700 border-slate-200/80"
-          }`}
+    <div
+      className="rounded-2xl border p-4 sm:p-5 shadow-xs transition-all duration-200"
+      style={{
+        backgroundColor: "var(--color-bg-elevated)",
+        borderColor: "var(--color-border)",
+      }}
+    >
+      <div
+        className="flex items-center justify-between mb-3 border-b pb-2.5"
+        style={{ borderColor: "var(--color-border-subtle)" }}
+      >
+        <h3
+          className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 font-display"
+          style={{ color: "var(--color-text)" }}
         >
-          {summary.isFullyTimed ? "Complete Estimate" : "Partial Time"}
+          <Clock className="w-4 h-4 text-blue-500" />
+          <span>Duration & Travel Metrics</span>
+        </h3>
+
+        <span
+          className="text-[10px] font-bold px-2.5 py-0.5 rounded-full"
+          style={{
+            backgroundColor: summary.isFullyTimed ? "rgba(59, 130, 246, 0.1)" : "rgba(148, 163, 184, 0.15)",
+            color: summary.isFullyTimed ? "#3b82f6" : "var(--color-text-muted)",
+          }}
+        >
+          {summary.isFullyTimed ? "Complete Estimate" : "Partial Metrics"}
         </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
-          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
-            Known Travel Time
+        <div
+          className="p-3.5 rounded-xl border"
+          style={{
+            backgroundColor: "var(--color-bg-subtle)",
+            borderColor: "var(--color-border)",
+          }}
+        >
+          <span className="text-[10px] uppercase font-bold block mb-1" style={{ color: "var(--color-text-muted)" }}>
+            Total Est. Time
           </span>
-          <div className="text-xl font-bold font-display text-slate-900 tabular-nums">
-            {summary.knownTotalMinutes} <span className="text-xs font-medium text-slate-500">Mins</span>
+          <div className="text-xl font-bold font-display tabular-nums" style={{ color: "var(--color-text)" }}>
+            {summary.knownTotalMinutes}{" "}
+            <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
+              Mins
+            </span>
           </div>
+          {summary.totalDistanceKm > 0 && (
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: "var(--color-accent)" }}>
+              ~{summary.totalDistanceKm} km total
+            </div>
+          )}
         </div>
 
-        <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80">
-          <span className="text-[10px] uppercase font-bold text-emerald-800 block mb-1 flex items-center gap-1">
-            <Footprints className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Walking Time</span>
+        <div
+          className="p-3.5 rounded-xl border"
+          style={{
+            backgroundColor: "rgba(13, 148, 136, 0.08)",
+            borderColor: "rgba(13, 148, 136, 0.2)",
+          }}
+        >
+          <span className="text-[10px] uppercase font-bold block mb-1 flex items-center gap-1 text-teal-600 dark:text-teal-400">
+            <Footprints className="w-3.5 h-3.5" />
+            <span>Walking Legs</span>
           </span>
-          <div className="text-xl font-bold font-display text-emerald-950 tabular-nums">
-            {summary.walkingMinutes} <span className="text-xs font-medium text-emerald-700">Mins</span>
+          <div className="text-xl font-bold font-display tabular-nums text-teal-700 dark:text-teal-300">
+            {summary.walkingMinutes}{" "}
+            <span className="text-xs font-medium text-teal-600 dark:text-teal-400">Mins</span>
           </div>
+          {summary.walkingDistanceKm > 0 && (
+            <div className="text-[10px] font-mono mt-0.5 text-teal-600 dark:text-teal-400">
+              {summary.walkingDistanceKm} km walk
+            </div>
+          )}
         </div>
       </div>
 
       {summary.hasUnknownDurations && (
-        <div className="text-[11px] text-slate-500 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80 flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <div
+          className="text-[11px] p-2.5 rounded-xl border flex items-center gap-2 leading-tight"
+          style={{
+            backgroundColor: "var(--color-bg-subtle)",
+            borderColor: "var(--color-border-subtle)",
+            color: "var(--color-text-muted)",
+          }}
+        >
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-accent)" }} />
           <span>
-            {summary.unknownDurationLegCount} leg{summary.unknownDurationLegCount > 1 ? "s" : ""} have variable durations dependent on local transit schedules.
+            {summary.unknownDurationLegCount} leg{summary.unknownDurationLegCount > 1 ? "s" : ""} have variable transit durations dependent on traffic and departure intervals.
           </span>
         </div>
       )}

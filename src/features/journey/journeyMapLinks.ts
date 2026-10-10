@@ -8,7 +8,6 @@ export function formatLocationForMapQuery(location: string, region: string = "Ke
   const trimmed = location.trim();
   if (!trimmed) return "";
 
-  // If already contains region or common Kerala cities, don't repeat
   const lower = trimmed.toLowerCase();
   if (
     lower.includes("kerala") ||
@@ -36,11 +35,14 @@ export function mapModeToGoogleTravelMode(mode: TransportMode): "driving" | "wal
     case "walking":
       return "walking";
     case "train":
-    case "bus":
+    case "ksrtc_bus":
+    case "private_bus":
+    case "ferry":
     case "other":
       return "transit";
     case "auto":
     case "taxi":
+    case "car":
     default:
       return "driving";
   }
@@ -52,7 +54,7 @@ export function mapModeToGoogleTravelMode(mode: TransportMode): "driving" | "wal
 export function buildGoogleMapsLegUrl(
   from: string,
   to: string,
-  mode: TransportMode = "bus",
+  mode: TransportMode = "ksrtc_bus",
   region: string = "Kerala",
   options?: { customMapUrl?: string; fromCoords?: string; toCoords?: string }
 ): string {
@@ -113,9 +115,9 @@ export function buildFullRouteGoogleMapsUrl(
   const waypointList: string[] = [];
   legs.forEach((leg, index) => {
     if (index > 0 && leg.from) {
-      const formatted = formatLocationForMapQuery(leg.from, region);
-      if (formatted && !waypointList.includes(formatted)) {
-        waypointList.push(formatted);
+      const coordStr = leg.fromCoords || formatLocationForMapQuery(leg.from, region);
+      if (coordStr && !waypointList.includes(coordStr)) {
+        waypointList.push(coordStr);
       }
     }
   });
@@ -127,7 +129,6 @@ export function buildFullRouteGoogleMapsUrl(
   });
 
   if (waypointList.length > 0) {
-    // Google Maps dir waypoints separated by '|'
     params.set("waypoints", waypointList.slice(0, 5).join("|"));
   }
 

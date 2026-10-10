@@ -6,6 +6,7 @@ import {
   Bus,
   Car,
   Footprints,
+  Ship,
   Compass,
   Clock,
   IndianRupee,
@@ -26,65 +27,23 @@ interface TimelineLegItemProps {
   nextLegMode?: TransportMode;
 }
 
-const MODE_CONFIG: Record<
+const MODE_META: Record<
   TransportMode,
   {
     label: string;
     icon: React.FC<{ className?: string }>;
-    bgColor: string;
-    borderColor: string;
-    textColor: string;
-    badgeBg: string;
+    accentColor: string;
   }
 > = {
-  train: {
-    label: "Train",
-    icon: Train,
-    bgColor: "bg-indigo-50",
-    borderColor: "border-indigo-300",
-    textColor: "text-indigo-700",
-    badgeBg: "bg-indigo-600 text-white",
-  },
-  bus: {
-    label: "Bus",
-    icon: Bus,
-    bgColor: "bg-amber-50",
-    borderColor: "border-amber-300",
-    textColor: "text-amber-800",
-    badgeBg: "bg-amber-500 text-slate-950 font-bold",
-  },
-  auto: {
-    label: "Auto-Rickshaw",
-    icon: Car,
-    bgColor: "bg-emerald-50",
-    borderColor: "border-emerald-300",
-    textColor: "text-emerald-800",
-    badgeBg: "bg-emerald-600 text-white",
-  },
-  taxi: {
-    label: "Taxi / Car",
-    icon: Car,
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-300",
-    textColor: "text-blue-800",
-    badgeBg: "bg-blue-600 text-white",
-  },
-  walking: {
-    label: "Walking Leg",
-    icon: Footprints,
-    bgColor: "bg-teal-50/60",
-    borderColor: "border-teal-200",
-    textColor: "text-teal-800",
-    badgeBg: "bg-teal-600 text-white",
-  },
-  other: {
-    label: "Ferry / Transit",
-    icon: Compass,
-    bgColor: "bg-purple-50",
-    borderColor: "border-purple-300",
-    textColor: "text-purple-800",
-    badgeBg: "bg-purple-600 text-white",
-  },
+  train: { label: "Train", icon: Train, accentColor: "#4f46e5" },
+  ksrtc_bus: { label: "KSRTC Bus", icon: Bus, accentColor: "#ea580c" },
+  private_bus: { label: "Private Bus", icon: Bus, accentColor: "#d97706" },
+  auto: { label: "Auto-Rickshaw", icon: Car, accentColor: "#16a34a" },
+  taxi: { label: "Taxi / Cab", icon: Car, accentColor: "#2563eb" },
+  car: { label: "Private Car", icon: Car, accentColor: "#0284c7" },
+  walking: { label: "Walking Leg", icon: Footprints, accentColor: "#0d9488" },
+  ferry: { label: "Ferry / Boat", icon: Ship, accentColor: "#9333ea" },
+  other: { label: "Other Transit", icon: Compass, accentColor: "#64748b" },
 };
 
 export const TimelineLegItem: React.FC<TimelineLegItemProps> = ({
@@ -95,8 +54,8 @@ export const TimelineLegItem: React.FC<TimelineLegItemProps> = ({
   onSelectStep,
   nextLegMode,
 }) => {
-  const config = MODE_CONFIG[leg.mode] || MODE_CONFIG.other;
-  const Icon = config.icon;
+  const meta = MODE_META[leg.mode] || MODE_META.other;
+  const Icon = meta.icon;
   const isWalking = leg.mode === "walking";
 
   const mapUrl = buildGoogleMapsLegUrl(leg.from, leg.to, leg.mode, "Kerala", {
@@ -104,75 +63,97 @@ export const TimelineLegItem: React.FC<TimelineLegItemProps> = ({
     fromCoords: leg.fromCoords,
     toCoords: leg.toCoords,
   });
+
   const fromSearchUrl = leg.from ? buildGoogleMapsSearchUrl(leg.fromCoords || leg.from, "Kerala") : "";
   const toSearchUrl = leg.to ? buildGoogleMapsSearchUrl(leg.toCoords || leg.to, "Kerala") : "";
 
   return (
     <div
       onClick={onSelectStep}
-      className={`relative cursor-pointer transition-all duration-200 mb-6 group ${
-        isActiveStep ? "scale-[1.02]" : "hover:scale-[1.01]"
+      className={`relative cursor-pointer transition-all duration-200 mb-4 group ${
+        isActiveStep ? "scale-[1.01]" : "hover:opacity-95"
       }`}
     >
+      {/* Connecting Vertical Line to next leg */}
       {index < totalLegs - 1 && (
         <div
-          className={`absolute left-6 top-12 bottom-0 w-1 -ml-0.5 z-0 ${
-            isWalking ? "border-l-2 border-dashed border-teal-400 bg-transparent" : "bg-slate-300"
+          className={`absolute left-5 top-12 bottom-0 w-0.5 -ml-px z-0 ${
+            isWalking ? "border-l-2 border-dashed border-teal-500" : ""
           }`}
-          style={{ height: "calc(100% + 1.5rem)" }}
+          style={{
+            backgroundColor: isWalking ? "transparent" : "var(--color-border)",
+            height: "calc(100% + 1.25rem)",
+          }}
         />
       )}
 
       <div
-        className={`relative z-10 rounded-xl border p-4 shadow-sm transition ${config.bgColor} ${
-          isActiveStep
-            ? `ring-2 ring-slate-900 ${config.borderColor} shadow-md`
-            : `${config.borderColor} hover:shadow`
-        }`}
+        className="relative z-10 rounded-2xl border p-4 shadow-xs transition-all duration-200"
+        style={{
+          backgroundColor: isActiveStep ? "var(--color-bg-elevated)" : "var(--color-bg-subtle)",
+          borderColor: isActiveStep ? "var(--color-accent)" : "var(--color-border)",
+          boxShadow: isActiveStep ? "0 4px 12px rgba(13, 148, 136, 0.12)" : "none",
+        }}
       >
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-start justify-between gap-2 mb-2.5">
+          <div className="flex items-center space-x-3">
             <div
-              className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ${config.badgeBg}`}
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-xs shrink-0 text-white"
+              style={{ backgroundColor: meta.accentColor }}
             >
               <Icon className="w-5 h-5" />
             </div>
+
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--color-text-muted)" }}>
                   Leg {index + 1}
                 </span>
-                <span className={`text-xs font-bold ${config.textColor}`}>• {config.label}</span>
+                <span className="text-xs font-bold" style={{ color: meta.accentColor }}>
+                  • {meta.label}
+                </span>
+                {leg.distanceKm && (
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.2 rounded-full font-mono tabular-nums"
+                    style={{
+                      backgroundColor: "var(--color-accent-subtle)",
+                      color: "var(--color-accent)",
+                    }}
+                  >
+                    {leg.distanceKm} km
+                  </span>
+                )}
               </div>
-              <h4 className="text-sm font-bold text-slate-900 leading-tight flex flex-wrap items-center gap-1.5">
+
+              <h4 className="text-sm font-bold leading-tight flex flex-wrap items-center gap-1.5 mt-0.5" style={{ color: "var(--color-text)" }}>
                 <span className="inline-flex items-center gap-1">
-                  {leg.from || "Start Location"}
+                  {leg.from || "Start Stop"}
                   {fromSearchUrl && (
                     <a
                       href={fromSearchUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-slate-400 hover:text-emerald-700 transition p-0.5 rounded hover:bg-white/80"
-                      title={`View "${leg.from}" pin on Google Maps`}
+                      className="opacity-50 hover:opacity-100 transition-opacity"
+                      title={`View "${leg.from}" on Google Maps`}
                     >
-                      <MapPin className="w-3 h-3" />
+                      <MapPin className="w-3 h-3 text-emerald-500" />
                     </a>
                   )}
                 </span>
-                <ArrowRight className="inline w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <ArrowRight className="inline w-3.5 h-3.5 opacity-40 shrink-0" />
                 <span className="inline-flex items-center gap-1">
-                  {leg.to || "End Location"}
+                  {leg.to || "Destination Stop"}
                   {toSearchUrl && (
                     <a
                       href={toSearchUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="text-slate-400 hover:text-emerald-700 transition p-0.5 rounded hover:bg-white/80"
-                      title={`View "${leg.to}" pin on Google Maps`}
+                      className="opacity-50 hover:opacity-100 transition-opacity"
+                      title={`View "${leg.to}" on Google Maps`}
                     >
-                      <MapPin className="w-3 h-3" />
+                      <MapPin className="w-3 h-3 text-rose-500" />
                     </a>
                   )}
                 </span>
@@ -180,55 +161,89 @@ export const TimelineLegItem: React.FC<TimelineLegItemProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center space-x-1.5">
-            {isActiveStep && (
-              <span className="bg-slate-900 text-white text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                <CheckCircle2 className="w-3 h-3 text-amber-400" />
-                Active Step
-              </span>
-            )}
-          </div>
+          {isActiveStep && (
+            <span
+              className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs"
+              style={{
+                backgroundColor: "var(--color-accent)",
+                color: "#ffffff",
+              }}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Active</span>
+            </span>
+          )}
         </div>
 
+        {/* Boarding instructions note */}
         {leg.instructions && (
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-2.5 my-2 border border-slate-200/80 text-xs text-slate-800 leading-relaxed font-medium">
+          <div
+            className="rounded-xl p-2.5 my-2.5 text-xs font-medium border leading-relaxed"
+            style={{
+              backgroundColor: "var(--color-bg)",
+              borderColor: "var(--color-border-subtle)",
+              color: "var(--color-text)",
+            }}
+          >
             {leg.instructions}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 mt-2 pt-2 border-t border-slate-200/60 text-xs">
+        {/* Fare, Duration & Deep-link Badges */}
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 mt-2.5 pt-2.5 border-t text-xs"
+          style={{ borderColor: "var(--color-border-subtle)" }}
+        >
           <div className="flex flex-wrap items-center gap-2">
+            {/* Fare Tag */}
             <div className="flex items-center space-x-1 font-semibold">
-              <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+              <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
               {isWalking ? (
-                <span className="text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full text-[11px]">
+                <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
                   Free (Walking)
                 </span>
               ) : leg.fare.value !== null ? (
-                <span className="text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px] shadow-2xs">
+                <span
+                  className="px-2 py-0.5 rounded-lg border text-[11px] font-mono tabular-nums font-bold"
+                  style={{
+                    backgroundColor: "var(--color-bg-elevated)",
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text)",
+                  }}
+                >
                   ₹{leg.fare.value}
-                  {leg.fare.source === "organiser" && (
-                    <span className="ml-1 text-[10px] text-amber-700 font-normal">
-                      (Organiser Estimate)
+                  {leg.fare.fareStatus === "estimated_fare" && (
+                    <span className="ml-1 text-[9px] font-normal" style={{ color: "var(--color-text-muted)" }}>
+                      (Tariff Est.)
                     </span>
                   )}
                 </span>
               ) : (
-                <span className="text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-full text-[11px] font-medium flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3 text-amber-600" />
+                <span className="text-amber-600 dark:text-amber-400 text-[11px] font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
                   Fare Unknown
                 </span>
               )}
             </div>
 
+            {/* Duration Tag */}
             <div className="flex items-center space-x-1 font-semibold">
-              <Clock className="w-3.5 h-3.5 text-blue-600" />
+              <Clock className="w-3.5 h-3.5 text-blue-500" />
               {leg.durationMinutes.value !== null ? (
-                <span className="text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 text-[11px] shadow-2xs">
+                <span
+                  className="px-2 py-0.5 rounded-lg border text-[11px] font-mono tabular-nums"
+                  style={{
+                    backgroundColor: "var(--color-bg-elevated)",
+                    borderColor: "var(--color-border)",
+                    color: "var(--color-text)",
+                  }}
+                >
                   {leg.durationMinutes.value} Mins
                 </span>
               ) : (
-                <span className="text-slate-500 italic text-[11px]">Duration not specified</span>
+                <span className="text-[11px] italic" style={{ color: "var(--color-text-muted)" }}>
+                  Duration unpriced
+                </span>
               )}
             </div>
           </div>
@@ -239,30 +254,37 @@ export const TimelineLegItem: React.FC<TimelineLegItemProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/20 backdrop-blur-md border border-white/30 text-slate-800 hover:bg-white/40 transition-shadow shadow-sm hover:shadow-md text-[11px] font-medium"
-              title="Open Navigation in Google Maps"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all hover:scale-[1.02] shadow-2xs"
+              style={{
+                backgroundColor: "var(--color-bg-elevated)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
+              title="Verify directions in Google Maps"
             >
-              <Navigation className="w-3 h-3 text-emerald-600" />
-              <span>Navigate Leg</span>
-              <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+              <Navigation className="w-3 h-3" style={{ color: "var(--color-accent)" }} />
+              <span>Navigate</span>
+              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
             </a>
           )}
         </div>
 
-        {(leg.fromCoords || leg.toCoords || leg.customMapUrl) && (
-          <div className="mt-2 text-[10px] text-slate-500 bg-white/60 px-2 py-1 rounded border border-slate-200/60 font-mono flex items-center gap-1.5">
-            <MapPin className="w-3 h-3 text-teal-600 shrink-0" />
-            <span className="truncate">
-              GPS Waypoints: {leg.fromCoords || "Auto Search"} ➔ {leg.toCoords || "Auto Search"}
-            </span>
-          </div>
-        )}
-
+        {/* Transfer guidance banner if switching modes */}
         {nextLegMode && nextLegMode !== leg.mode && (
-          <div className="mt-3 bg-slate-900 text-amber-300 text-[11px] font-bold px-3 py-1.5 rounded-lg flex items-center justify-between shadow-sm">
-            <span>Transfer Point at {leg.to || "Stop"}</span>
-            <span className="uppercase text-[10px] tracking-wider text-slate-300">
-              Change to {nextLegMode} →
+          <div
+            className="mt-2.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold flex items-center justify-between border"
+            style={{
+              backgroundColor: "var(--color-accent-subtle)",
+              borderColor: "var(--color-border)",
+              color: "var(--color-text)",
+            }}
+          >
+            <span>Transfer Point: {leg.to || "Interchange Stop"}</span>
+            <span
+              className="text-[10px] font-bold uppercase tracking-wide"
+              style={{ color: "var(--color-accent)" }}
+            >
+              Switch to {nextLegMode.replace("_", " ").toUpperCase()} →
             </span>
           </div>
         )}

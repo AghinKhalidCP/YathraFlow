@@ -1,21 +1,99 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
 }
 
+/* ── Light Theme Tokens (Refined Modern Travel-Tech) ─────────────────────────────── */
+:root {
+  --color-bg: #f8fafc;
+  --color-bg-elevated: #ffffff;
+  --color-bg-subtle: #f1f5f9;
+  --color-bg-inset: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-border-subtle: #f1f5f9;
+  --color-accent: #0d9488;
+  --color-accent-hover: #0f766e;
+  --color-accent-subtle: #ccfbf1;
+  --color-surface-overlay: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Dark Theme Tokens ──────────────────────────────── */
+.dark {
+  --color-bg: #0b0f19;
+  --color-bg-elevated: #131927;
+  --color-bg-subtle: #1c2438;
+  --color-bg-inset: #242f49;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+  --color-border: #232d43;
+  --color-border-subtle: #1c2438;
+  --color-accent: #2dd4bf;
+  --color-accent-hover: #5eead4;
+  --color-accent-subtle: rgba(45, 212, 191, 0.12);
+  --color-surface-overlay: rgba(19, 25, 39, 0.88);
+}
+
 @layer base {
   body {
-    @apply bg-slate-50/70 text-slate-900 antialiased font-sans min-h-screen tracking-normal;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    @apply antialiased font-sans min-h-screen tracking-normal;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
   }
 }
 
+/* Leaflet Container Styling & Fixes */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-sans) !important;
+  background-color: #e2e8f0;
+  z-index: 1;
+}
+
+.dark .leaflet-container {
+  background-color: #1e293b;
+}
+
+/* Map tiles dark mode filter */
+.dark .leaflet-tile-pane {
+  filter: brightness(0.75) invert(1) contrast(1.15) hue-rotate(200deg) saturate(0.4);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 14px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2) !important;
+  padding: 4px !important;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px !important;
+  line-height: 1.4 !important;
+}
+
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media print {

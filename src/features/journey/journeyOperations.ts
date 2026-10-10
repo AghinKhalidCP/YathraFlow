@@ -1,14 +1,16 @@
-import type { Journey, JourneyLeg, JourneyRoute } from "./journeyTypes";
+import type { Journey, JourneyLeg, JourneyRoute, GeoLocation } from "./journeyTypes";
+import { estimateLegFare } from "../fare/fareCalculator";
 
 export function createEmptyLeg(): JourneyLeg {
   return {
     id: `leg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-    mode: "bus",
+    mode: "ksrtc_bus",
     from: "",
     to: "",
     fare: {
       value: null,
       source: "unknown",
+      fareStatus: "unknown",
       note: "",
     },
     durationMinutes: {
@@ -20,7 +22,7 @@ export function createEmptyLeg(): JourneyLeg {
   };
 }
 
-export function createEmptyRoute(name: string = "New Alternative Route"): JourneyRoute {
+export function createEmptyRoute(name: string = "Route A"): JourneyRoute {
   return {
     id: `route-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     name,
@@ -30,7 +32,17 @@ export function createEmptyRoute(name: string = "New Alternative Route"): Journe
 }
 
 export function addLegToRoute(journey: Journey, routeId: string, newLeg?: JourneyLeg): Journey {
-  const legToAdd = newLeg || createEmptyLeg();
+  const targetRoute = journey.routes.find((r) => r.id === routeId);
+  const lastLeg = targetRoute && targetRoute.legs.length > 0 ? targetRoute.legs[targetRoute.legs.length - 1] : null;
+
+  // Seamless chain: default new leg's 'from' to previous leg's 'to' location
+  const legToAdd: JourneyLeg = newLeg || {
+    ...createEmptyLeg(),
+    from: lastLeg?.to || "",
+    fromLocation: lastLeg?.toLocation,
+    fromCoords: lastLeg?.toCoords,
+  };
+
   return {
     ...journey,
     routes: journey.routes.map((route) => {
@@ -54,23 +66,92 @@ export function updateLegInRoute(
     ...journey,
     routes: journey.routes.map((route) => {
       if (route.id !== routeId) return route;
+
+      const legIndex = route.legs.findIndex((l) => l.id === legId);
+      if (legIndex === -1) return route;
+
+      const currentLeg = route.legs[legIndex];
+      const updatedLeg: JourneyLeg = { ...currentLeg, ...updates };
+
+      // Recalculate auto fare when mode or distance changes if not manually set by user
+      const modeChanged = updates.mode && updates.mode !== currentLeg.mode;
+      const distanceChanged = updates.distanceKm !== undefined && updates.distanceKm !== currentLeg.distanceKm;
+
+      if ((modeChanged || distanceChanged) && updatedLeg.fare.source !== "user") {
+        const fareResult = estimateLegFare(updatedLeg.mode, updatedLeg.distanceKm);
+        updatedLeg.fare = {
+          value: fareResult.fare,
+          source: fareResult.source,
+          fareStatus: fareResult.fareStatus,
+          note: fareResult.note,
+          isCalculated: true,
+        };
+      }
+
+      if (updates.mode === "walking" && currentLeg.mode !== "walking") {
+        updatedLeg.fare = {
+          value: 0,
+          source: "curated",
+          fareStatus: "verified_tariff",
+          note: "Walking leg — Free",
+          isCalculated: true,
+        };
+      }
+
+      // Logical connectivity check:
+      // If `to` of this leg changes, update the starting point of the immediate next leg if it was matching
+      const newLegs = [...route.legs];
+      newLegs[legIndex] = updatedLeg;
+
+      if (updates.toLocation && legIndex < newLegs.length - 1) {
+        const nextLeg = newLegs[legIndex + 1];
+        // If next leg was empty or previously matching, chain the new stop
+        if (!nextLeg.from || nextLeg.from === currentLeg.to) {
+          newLegs[legIndex + 1] = {
+            ...nextLeg,
+            from: updates.to || updates.toLocation.name,
+            fromLocation: updates.toLocation,
+            fromCoords: `${updates.toLocation.lat.toFixed(6)}, ${updates.toLocation.lng.toFixed(6)}`,
+            // Clear invalid geometry for next leg so it re-routes
+            geometry: undefined,
+            distanceKm: null,
+          };
+        }
+      }
+
       return {
         ...route,
-        legs: route.legs.map((leg) => {
-          if (leg.id !== legId) return leg;
-          const updatedLeg = { ...leg, ...updates };
+        legs: newLegs,
+      };
+    }),
+    updatedAt: new Date().toISOString(),
+  };
+}
 
-          if (updates.mode === "walking" && leg.mode !== "walking" && leg.fare.value === null) {
-            updatedLeg.fare = {
-              ...updatedLeg.fare,
-              value: 0,
-              source: "curated",
-              note: "Walking leg",
-            };
-          }
+export function duplicateLegInRoute(
+  journey: Journey,
+  routeId: string,
+  legId: string
+): Journey {
+  return {
+    ...journey,
+    routes: journey.routes.map((route) => {
+      if (route.id !== routeId) return route;
+      const index = route.legs.findIndex((l) => l.id === legId);
+      if (index === -1) return route;
 
-          return updatedLeg;
-        }),
+      const legToDup = route.legs[index];
+      const duplicated: JourneyLeg = {
+        ...legToDup,
+        id: `leg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      };
+
+      const newLegs = [...route.legs];
+      newLegs.splice(index + 1, 0, duplicated);
+
+      return {
+        ...route,
+        legs: newLegs,
       };
     }),
     updatedAt: new Date().toISOString(),
@@ -160,7 +241,13 @@ export function updateRouteDetails(
 
 export function updateJourneyHeader(
   journey: Journey,
-  updates: { title?: string; originLabel?: string; destinationLabel?: string }
+  updates: {
+    title?: string;
+    originLabel?: string;
+    destinationLabel?: string;
+    originLocation?: GeoLocation;
+    destinationLocation?: GeoLocation;
+  }
 ): Journey {
   return {
     ...journey,

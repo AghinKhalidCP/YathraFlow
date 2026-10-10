@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Journey, JourneyLeg } from "../features/journey/journeyTypes";
-import { SAMPLE_VENUE_JOURNEY, SAMPLE_KOCHI_JOURNEY } from "../data/sampleJourneys";
+import type { Journey, JourneyLeg, GeoLocation } from "../features/journey/journeyTypes";
 import {
   saveJourneyToLocalStorage,
   loadJourneyFromLocalStorage,
@@ -9,16 +8,50 @@ import {
 import {
   addLegToRoute,
   updateLegInRoute,
+  duplicateLegInRoute,
   deleteLegFromRoute,
   moveLegInRoute,
   addRouteToJourney,
   deleteRouteFromJourney,
   updateRouteDetails,
   updateJourneyHeader,
+  createEmptyRoute,
+  createEmptyLeg,
 } from "../features/journey/journeyOperations";
 
+function createEmptyJourney(originLoc?: GeoLocation, destLoc?: GeoLocation): Journey {
+  const firstLeg: JourneyLeg = {
+    ...createEmptyLeg(),
+    from: originLoc?.name || "",
+    fromLocation: originLoc,
+    fromCoords: originLoc ? `${originLoc.lat.toFixed(6)}, ${originLoc.lng.toFixed(6)}` : undefined,
+    to: destLoc?.name || "",
+    toLocation: destLoc,
+    toCoords: destLoc ? `${destLoc.lat.toFixed(6)}, ${destLoc.lng.toFixed(6)}` : undefined,
+  };
+
+  const route = {
+    ...createEmptyRoute("Recommended Route"),
+    legs: [firstLeg],
+  };
+
+  return {
+    id: `journey-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    title: originLoc && destLoc ? `${originLoc.name} to ${destLoc.name}` : "",
+    region: "Kerala",
+    originLabel: originLoc?.name || "",
+    destinationLabel: destLoc?.name || "",
+    originLocation: originLoc,
+    destinationLocation: destLoc,
+    routes: [route],
+    activeRouteId: route.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 export function useJourneyState() {
-  const [journey, setJourney] = useState<Journey>(() => {
+  const [journey, setJourney] = useState<Journey | null>(() => {
     const params = new URLSearchParams(window.location.search);
     const jdata = params.get("jdata") || params.get("embedData");
     if (jdata) {
@@ -29,66 +62,90 @@ export function useJourneyState() {
     const saved = loadJourneyFromLocalStorage();
     if (saved) return saved;
 
-    return SAMPLE_VENUE_JOURNEY;
+    // Start empty — strictly zero state
+    return null;
   });
 
   const isEmbed = Boolean(new URLSearchParams(window.location.search).get("embedData"));
 
   useEffect(() => {
-    if (!isEmbed) {
+    if (!isEmbed && journey) {
       saveJourneyToLocalStorage(journey);
     }
   }, [journey, isEmbed]);
 
-  const activeRoute =
-    journey.routes.find((r) => r.id === journey.activeRouteId) || journey.routes[0];
+  const activeRoute = journey
+    ? journey.routes.find((r) => r.id === journey.activeRouteId) || journey.routes[0]
+    : null;
+
+  const handleCreateNewJourney = (originLoc?: GeoLocation, destLoc?: GeoLocation) => {
+    const newJourney = createEmptyJourney(originLoc, destLoc);
+    setJourney(newJourney);
+  };
+
+  const handleLoadDemo = (demoJourney: Journey) => {
+    setJourney(demoJourney);
+  };
+
+  const handleClearJourney = () => {
+    localStorage.removeItem("yathraflow_current_journey_v1");
+    setJourney(null);
+  };
 
   const handleSelectRoute = (routeId: string) => {
-    setJourney((prev) => ({ ...prev, activeRouteId: routeId }));
+    if (!journey) return;
+    setJourney((prev) => (prev ? { ...prev, activeRouteId: routeId } : prev));
   };
 
   const handleAddLeg = () => {
-    if (!activeRoute) return;
-    setJourney((prev) => addLegToRoute(prev, activeRoute.id));
+    if (!journey || !activeRoute) return;
+    setJourney((prev) => (prev ? addLegToRoute(prev, activeRoute.id) : prev));
   };
 
   const handleUpdateLeg = (legId: string, updates: Partial<JourneyLeg>) => {
-    if (!activeRoute) return;
-    setJourney((prev) => updateLegInRoute(prev, activeRoute.id, legId, updates));
+    if (!journey || !activeRoute) return;
+    setJourney((prev) => (prev ? updateLegInRoute(prev, activeRoute.id, legId, updates) : prev));
+  };
+
+  const handleDuplicateLeg = (legId: string) => {
+    if (!journey || !activeRoute) return;
+    setJourney((prev) => (prev ? duplicateLegInRoute(prev, activeRoute.id, legId) : prev));
   };
 
   const handleDeleteLeg = (legId: string) => {
-    if (!activeRoute) return;
-    setJourney((prev) => deleteLegFromRoute(prev, activeRoute.id, legId));
+    if (!journey || !activeRoute) return;
+    setJourney((prev) => (prev ? deleteLegFromRoute(prev, activeRoute.id, legId) : prev));
   };
 
   const handleMoveLeg = (legId: string, direction: "up" | "down") => {
-    if (!activeRoute) return;
-    setJourney((prev) => moveLegInRoute(prev, activeRoute.id, legId, direction));
+    if (!journey || !activeRoute) return;
+    setJourney((prev) => (prev ? moveLegInRoute(prev, activeRoute.id, legId, direction) : prev));
   };
 
   const handleAddRoute = () => {
-    setJourney((prev) => addRouteToJourney(prev));
+    if (!journey) return;
+    setJourney((prev) => (prev ? addRouteToJourney(prev) : prev));
   };
 
   const handleDeleteRoute = (routeId: string) => {
-    setJourney((prev) => deleteRouteFromJourney(prev, routeId));
+    if (!journey) return;
+    setJourney((prev) => (prev ? deleteRouteFromJourney(prev, routeId) : prev));
   };
 
   const handleUpdateRoute = (routeId: string, updates: { name?: string; description?: string }) => {
-    setJourney((prev) => updateRouteDetails(prev, routeId, updates));
+    if (!journey) return;
+    setJourney((prev) => (prev ? updateRouteDetails(prev, routeId, updates) : prev));
   };
 
-  const handleUpdateHeader = (updates: { title?: string; originLabel?: string; destinationLabel?: string }) => {
-    setJourney((prev) => updateJourneyHeader(prev, updates));
-  };
-
-  const handleResetVenueDemo = () => {
-    setJourney(SAMPLE_VENUE_JOURNEY);
-  };
-
-  const handleLoadKochiDemo = () => {
-    setJourney(SAMPLE_KOCHI_JOURNEY);
+  const handleUpdateHeader = (updates: {
+    title?: string;
+    originLabel?: string;
+    destinationLabel?: string;
+    originLocation?: GeoLocation;
+    destinationLocation?: GeoLocation;
+  }) => {
+    if (!journey) return;
+    setJourney((prev) => (prev ? updateJourneyHeader(prev, updates) : prev));
   };
 
   return {
@@ -98,13 +155,15 @@ export function useJourneyState() {
     handleSelectRoute,
     handleAddLeg,
     handleUpdateLeg,
+    handleDuplicateLeg,
     handleDeleteLeg,
     handleMoveLeg,
     handleAddRoute,
     handleDeleteRoute,
     handleUpdateRoute,
     handleUpdateHeader,
-    handleResetVenueDemo,
-    handleLoadKochiDemo,
+    handleCreateNewJourney,
+    handleLoadDemo,
+    handleClearJourney,
   };
 }
