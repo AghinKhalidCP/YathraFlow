@@ -17,6 +17,7 @@ interface JourneyHeaderFormProps {
     originLocation?: GeoLocation;
     destinationLocation?: GeoLocation;
   }) => void;
+  onOpenGenerator?: () => void;
 }
 
 export const JourneyHeaderForm: React.FC<JourneyHeaderFormProps> = ({
@@ -26,6 +27,7 @@ export const JourneyHeaderForm: React.FC<JourneyHeaderFormProps> = ({
   originLocation,
   destinationLocation,
   onUpdate,
+  onOpenGenerator,
 }) => {
   const [mapPickerTarget, setMapPickerTarget] = useState<"origin" | "destination" | null>(null);
 
@@ -57,18 +59,37 @@ export const JourneyHeaderForm: React.FC<JourneyHeaderFormProps> = ({
           <span>Journey Blueprint</span>
         </div>
 
-        {originLocation && destinationLocation && (
-          <span
-            className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
-            style={{
-              backgroundColor: "var(--color-accent-subtle)",
-              color: "var(--color-accent)",
-            }}
-          >
-            <Compass className="w-3 h-3" />
-            <span>Map-Backed Endpoints</span>
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {originLocation && destinationLocation && onOpenGenerator && (
+            <button
+              type="button"
+              onClick={onOpenGenerator}
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 border transition-colors hover:bg-slate-500/10 cursor-pointer"
+              style={{
+                backgroundColor: "var(--color-accent-subtle)",
+                borderColor: "var(--color-border)",
+                color: "var(--color-accent)",
+              }}
+              title="Auto-generate multimodal route alternatives for these locations"
+            >
+              <Compass className="w-3 h-3" />
+              <span>Auto-Plan Routes</span>
+            </button>
+          )}
+
+          {originLocation && destinationLocation && !onOpenGenerator && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+              style={{
+                backgroundColor: "var(--color-accent-subtle)",
+                color: "var(--color-accent)",
+              }}
+            >
+              <Compass className="w-3 h-3" />
+              <span>Map-Backed Endpoints</span>
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3.5">

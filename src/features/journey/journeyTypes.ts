@@ -14,6 +14,7 @@ export type FareStatus =
   | "organiser_provided"
   | "estimated_fare"
   | "user_entered"
+  | "unavailable"
   | "unknown";
 
 export type ValueSource =
@@ -100,6 +101,8 @@ export type Journey = {
 
 export type CostSummaryResult = {
   knownSubtotal: number;
+  verifiedSubtotal: number;
+  estimatedSubtotal: number;
   hasUnknownFares: boolean;
   unknownFareLegCount: number;
   knownFareLegCount: number;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import type { Journey, JourneyLeg, GeoLocation } from "../features/journey/journeyTypes";
+import type { Journey, JourneyLeg, GeoLocation, JourneyRoute } from "../features/journey/journeyTypes";
 import {
   saveJourneyToLocalStorage,
   loadJourneyFromLocalStorage,
@@ -148,6 +148,28 @@ export function useJourneyState() {
     setJourney((prev) => (prev ? updateJourneyHeader(prev, updates) : prev));
   };
 
+  const handleLoadGeneratedJourney = (
+    routes: JourneyRoute[],
+    originLoc: GeoLocation,
+    destLoc: GeoLocation,
+    title?: string
+  ) => {
+    const newJourney: Journey = {
+      id: `journey-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      title: title || `${originLoc.name} to ${destLoc.name}`,
+      region: "Kerala",
+      originLabel: originLoc.name,
+      destinationLabel: destLoc.name,
+      originLocation: originLoc,
+      destinationLocation: destLoc,
+      routes: routes.length > 0 ? routes : [createEmptyRoute()],
+      activeRouteId: routes[0]?.id || "route-default",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setJourney(newJourney);
+  };
+
   return {
     journey,
     activeRoute,
@@ -163,7 +185,8 @@ export function useJourneyState() {
     handleUpdateRoute,
     handleUpdateHeader,
     handleCreateNewJourney,
+    handleLoadGeneratedJourney,
     handleLoadDemo,
     handleClearJourney,
   };
-}
+};

@@ -50,30 +50,50 @@ export const CostBreakdownCard: React.FC<CostBreakdownCardProps> = ({ summary })
 
       {/* Main Totals Card */}
       <div
-        className="rounded-xl p-4 mb-3 flex items-center justify-between text-white shadow-sm"
+        className="rounded-xl p-4 mb-3 text-white shadow-sm"
         style={{
           background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
         }}
       >
-        <div>
-          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-            {summary.isFullyPriced ? "Total Journey Fare" : "Known Fare Subtotal"}
-          </span>
-          <div className="text-2xl font-black font-display tracking-tight text-white tabular-nums">
-            ₹{summary.knownSubtotal}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              {summary.isFullyPriced ? "Total Journey Fare" : "Known Fare Subtotal"}
+            </span>
+            <div className="text-2xl font-black font-display tracking-tight text-white tabular-nums">
+              ₹{summary.knownSubtotal}
+            </div>
+          </div>
+
+          <div className="text-right">
+            <div className="text-xs text-slate-300 font-semibold tabular-nums">
+              {summary.knownFareLegCount} of {summary.totalLegCount} Legs Priced
+            </div>
+            {summary.walkingLegCount > 0 && (
+              <div className="text-[10px] text-teal-400 font-medium mt-0.5">
+                ({summary.walkingLegCount} free walking leg{summary.walkingLegCount > 1 ? "s" : ""})
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-xs text-slate-300 font-semibold tabular-nums">
-            {summary.knownFareLegCount} of {summary.totalLegCount} Legs Priced
-          </div>
-          {summary.walkingLegCount > 0 && (
-            <div className="text-[10px] text-teal-400 font-medium mt-0.5">
-              ({summary.walkingLegCount} free walking leg{summary.walkingLegCount > 1 ? "s" : ""})
+        {/* Subtotal Categorization Pill Bar */}
+        {(summary.verifiedSubtotal > 0 || summary.estimatedSubtotal > 0) && (
+          <div className="mt-3 pt-2.5 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span className="text-slate-300">Verified:</span>
+              <span className="font-bold text-white tabular-nums">₹{summary.verifiedSubtotal}</span>
             </div>
-          )}
-        </div>
+            {summary.estimatedSubtotal > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="text-slate-300">Estimated:</span>
+                <span className="font-bold text-amber-300 tabular-nums">₹{summary.estimatedSubtotal}</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Transparent Pricing Disclaimer */}

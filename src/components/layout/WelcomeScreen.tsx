@@ -2,16 +2,18 @@ import React, { useState } from "react";
 import type { GeoLocation } from "../../features/journey/journeyTypes";
 import { LocationSelector } from "../geo/LocationSelector";
 import { MapPickerDialog } from "../geo/MapPickerDialog";
-import { Compass, Plus, BookOpen, ArrowRight, MapPin, Sparkles } from "lucide-react";
+import { Compass, Plus, BookOpen, MapPin, Sparkles } from "lucide-react";
 
 interface WelcomeScreenProps {
   onCreateJourney: (originLoc?: GeoLocation, destLoc?: GeoLocation) => void;
   onOpenDemoGallery: () => void;
+  onOpenGenerator?: (originLoc: GeoLocation, destLoc: GeoLocation) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onCreateJourney,
   onOpenDemoGallery,
+  onOpenGenerator,
 }) => {
   const [originLocation, setOriginLocation] = useState<GeoLocation | undefined>();
   const [destinationLocation, setDestinationLocation] = useState<GeoLocation | undefined>();
@@ -90,15 +92,33 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             />
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex flex-col sm:flex-row gap-2">
             <button
-              onClick={handleStartCreation}
-              className="w-full py-3 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => {
+                if (originLocation && destinationLocation && onOpenGenerator) {
+                  onOpenGenerator(originLocation, destinationLocation);
+                } else {
+                  handleStartCreation();
+                }
+              }}
+              disabled={!originLocation || !destinationLocation}
+              className="flex-1 py-3 rounded-xl text-xs sm:text-sm font-bold text-white transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               style={{ backgroundColor: "var(--color-accent)" }}
             >
-              <Plus className="w-4 h-4" />
-              <span>Create Journey Blueprint</span>
-              <ArrowRight className="w-4 h-4" />
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Auto-Generate Alternatives</span>
+            </button>
+
+            <button
+              onClick={handleStartCreation}
+              className="py-3 px-4 rounded-xl text-xs font-semibold border transition-all duration-200 hover:bg-slate-500/10 flex items-center justify-center gap-1.5 cursor-pointer"
+              style={{
+                borderColor: "var(--color-border)",
+                color: "var(--color-text)",
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Manual Edit</span>
             </button>
           </div>
         </div>

@@ -2,9 +2,10 @@ import type { GeoLocation } from "../journey/journeyTypes";
 
 /**
  * Curated, verified key transport hubs and landmarks across Kerala.
- * Strictly labeled as local dataset to provide immediate, reliable autocompletion for common hackathon and transit journeys.
+ * Strictly labeled as local dataset to provide immediate, reliable autocompletion and routing.
  */
 export const CURATED_KERALA_HUBS: GeoLocation[] = [
+  // Kozhikode (Calicut) District
   {
     id: "hub-clt-railway",
     name: "Kozhikode Railway Station (CLT)",
@@ -42,6 +43,17 @@ export const CURATED_KERALA_HUBS: GeoLocation[] = [
     verificationStatus: "verified_search",
   },
   {
+    id: "hub-clt-airport",
+    name: "Calicut International Airport (CCJ)",
+    displayName: "Calicut International Airport, Karipur, Malappuram, Kerala, 673647",
+    lat: 11.1364,
+    lng: 75.9553,
+    type: "aerodrome",
+    verificationStatus: "verified_search",
+  },
+
+  // Ernakulam / Kochi District
+  {
     id: "hub-cok-airport",
     name: "Cochin International Airport (COK)",
     displayName: "Cochin International Airport, Nedumbassery, Kochi, Kerala, 683111",
@@ -60,12 +72,30 @@ export const CURATED_KERALA_HUBS: GeoLocation[] = [
     verificationStatus: "verified_search",
   },
   {
+    id: "hub-ern-railway",
+    name: "Ernakulam North Railway Station (ERN)",
+    displayName: "Ernakulam Town (North) Railway Station, Kaloor, Kochi, 682018",
+    lat: 9.9928,
+    lng: 76.2878,
+    type: "railway_station",
+    verificationStatus: "verified_search",
+  },
+  {
     id: "hub-aluva-metro",
     name: "Aluva Metro Station",
     displayName: "Aluva Kochi Metro Station & KSRTC Feeder Bay, Aluva, 683101",
     lat: 10.1098,
     lng: 76.3533,
     type: "metro_station",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-vyttila-mobility-hub",
+    name: "Vyttila Mobility Hub",
+    displayName: "Vyttila Mobility Hub, KSRTC Depot, Metro Station & Water Metro Dock, Kochi, 682019",
+    lat: 9.9692,
+    lng: 76.3217,
+    type: "bus_station",
     verificationStatus: "verified_search",
   },
   {
@@ -77,6 +107,46 @@ export const CURATED_KERALA_HUBS: GeoLocation[] = [
     type: "ferry_terminal",
     verificationStatus: "verified_search",
   },
+  {
+    id: "hub-high-court-water-metro",
+    name: "High Court Water Metro Terminal",
+    displayName: "Kochi Water Metro Terminal, Marine Drive, High Court Junction, Kochi, 682031",
+    lat: 9.9825,
+    lng: 76.2736,
+    type: "ferry_terminal",
+    verificationStatus: "verified_search",
+  },
+
+  // Thrissur & Central Kerala
+  {
+    id: "hub-tcr-railway",
+    name: "Thrissur Railway Station (TCR)",
+    displayName: "Thrissur Railway Station, Railway Station Rd, Poothole, Thrissur, 680001",
+    lat: 10.5173,
+    lng: 76.2117,
+    type: "railway_station",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-tcr-ksrtc",
+    name: "Thrissur KSRTC Bus Stand",
+    displayName: "KSRTC Bus Stand, Kokkala, Thrissur, 680021",
+    lat: 10.5186,
+    lng: 76.2144,
+    type: "bus_station",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-shoranur-railway",
+    name: "Shoranur Junction Railway Station (SRR)",
+    displayName: "Shoranur Junction, Railway Station Rd, Shoranur, Palakkad, 679121",
+    lat: 10.7618,
+    lng: 76.2739,
+    type: "railway_station",
+    verificationStatus: "verified_search",
+  },
+
+  // Thiruvananthapuram (Trivandrum) District
   {
     id: "hub-tvc-central",
     name: "Thiruvananthapuram Central (TVC)",
@@ -96,6 +166,46 @@ export const CURATED_KERALA_HUBS: GeoLocation[] = [
     verificationStatus: "verified_search",
   },
   {
+    id: "hub-trv-airport",
+    name: "Thiruvananthapuram International Airport (TRV)",
+    displayName: "Trivandrum International Airport, Chacka, Thiruvananthapuram, 695008",
+    lat: 8.4821,
+    lng: 76.9200,
+    type: "aerodrome",
+    verificationStatus: "verified_search",
+  },
+
+  // Alappuzha & Kottayam
+  {
+    id: "hub-alleppey-boat-jetty",
+    name: "Alappuzha KSWTD Boat Jetty",
+    displayName: "State Water Transport Boat Jetty, Boat Jetty Rd, Alappuzha, 688011",
+    lat: 9.4925,
+    lng: 76.3385,
+    type: "ferry_terminal",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-alleppey-ksrtc",
+    name: "Alappuzha KSRTC Bus Station",
+    displayName: "KSRTC Bus Station, Boat Jetty Rd, Alappuzha, 688011",
+    lat: 9.4947,
+    lng: 76.3378,
+    type: "bus_station",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-kottayam-railway",
+    name: "Kottayam Railway Station (KTYM)",
+    displayName: "Kottayam Railway Station, Railway Station Rd, Nagampadam, Kottayam, 686001",
+    lat: 9.5962,
+    lng: 76.5332,
+    type: "railway_station",
+    verificationStatus: "verified_search",
+  },
+
+  // Wayanad, Idukki & Kannur
+  {
     id: "hub-munnar-ksrtc",
     name: "Munnar KSRTC Bus Station",
     displayName: "Munnar KSRTC Bus Depot, Silent Valley Rd, Munnar, Idukki, 685612",
@@ -105,12 +215,21 @@ export const CURATED_KERALA_HUBS: GeoLocation[] = [
     verificationStatus: "verified_search",
   },
   {
-    id: "hub-alleppey-boat-jetty",
-    name: "Alappuzha KSWTD Boat Jetty",
-    displayName: "State Water Transport Boat Jetty, Boat Jetty Rd, Alappuzha, 688011",
-    lat: 9.4925,
-    lng: 76.3385,
-    type: "ferry_terminal",
+    id: "hub-sulthan-bathery-ksrtc",
+    name: "Sulthan Bathery KSRTC Bus Station",
+    displayName: "KSRTC Bus Depot, Chungam, Sulthan Bathery, Wayanad, 673592",
+    lat: 11.6627,
+    lng: 76.2575,
+    type: "bus_station",
+    verificationStatus: "verified_search",
+  },
+  {
+    id: "hub-kannur-railway",
+    name: "Kannur Railway Station (CAN)",
+    displayName: "Kannur Main Railway Station, Station Rd, Kannur, 670001",
+    lat: 11.8703,
+    lng: 75.3704,
+    type: "railway_station",
     verificationStatus: "verified_search",
   },
 ];

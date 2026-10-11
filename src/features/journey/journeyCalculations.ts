@@ -2,14 +2,18 @@ import type {
   JourneyLeg,
   CostSummaryResult,
   DurationSummaryResult,
+  FareStatus,
 } from "./journeyTypes";
 
 /**
  * Calculates financial summaries safely without treating unknown fares as zero.
- * Walking legs explicitly cost ₹0.
+ * Distinguishes verified government tariffs, fixed stage fares, estimated ranges, and unknown fares.
+ * Walking legs explicitly cost ₹0 verified.
  */
 export function calculateRouteCostSummary(legs: JourneyLeg[]): CostSummaryResult {
   let knownSubtotal = 0;
+  let verifiedSubtotal = 0;
+  let estimatedSubtotal = 0;
   let unknownFareLegCount = 0;
   let knownFareLegCount = 0;
   let walkingLegCount = 0;
@@ -18,23 +22,41 @@ export function calculateRouteCostSummary(legs: JourneyLeg[]): CostSummaryResult
   for (const leg of legs) {
     if (leg.mode === "walking") {
       walkingLegCount++;
-      if (leg.fare.value !== null) {
-        knownSubtotal += leg.fare.value;
-      }
+      const walkFare = leg.fare.value ?? 0;
+      knownSubtotal += walkFare;
+      verifiedSubtotal += walkFare;
       knownFareLegCount++;
+      estimates.push({
+        source: "curated",
+        fareStatus: "verified_tariff",
+        amount: 0,
+        note: "Pedestrian link — Free",
+        legDescription: `${leg.from || "Walk"} → ${leg.to || "Destination"}`,
+        mode: "walking",
+      });
       continue;
     }
 
     if (leg.fare.value === null) {
       unknownFareLegCount++;
     } else {
-      knownSubtotal += leg.fare.value;
+      const amount = leg.fare.value;
+      knownSubtotal += amount;
       knownFareLegCount++;
-      const fareStatus = leg.fare.fareStatus || (leg.fare.source === "user" ? "user_entered" : "estimated_fare");
+
+      const fareStatus: FareStatus =
+        leg.fare.fareStatus || (leg.fare.source === "user" ? "user_entered" : "estimated_fare");
+
+      if (fareStatus === "verified_tariff" || fareStatus === "user_entered") {
+        verifiedSubtotal += amount;
+      } else {
+        estimatedSubtotal += amount;
+      }
+
       estimates.push({
         source: leg.fare.source,
         fareStatus,
-        amount: leg.fare.value,
+        amount,
         note: leg.fare.note,
         legDescription: `${leg.from || "Origin"} → ${leg.to || "Destination"}`,
         mode: leg.mode,
@@ -47,6 +69,8 @@ export function calculateRouteCostSummary(legs: JourneyLeg[]): CostSummaryResult
 
   return {
     knownSubtotal,
+    verifiedSubtotal,
+    estimatedSubtotal,
     hasUnknownFares: unknownFareLegCount > 0,
     unknownFareLegCount,
     knownFareLegCount,

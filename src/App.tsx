@@ -13,6 +13,8 @@ import { ShareModal } from "./components/sharing/ShareModal";
 import { EmailPreviewModal } from "./components/sharing/EmailPreviewModal";
 import { PrintView } from "./components/sharing/PrintView";
 import { EmbedView } from "./components/sharing/EmbedView";
+import { JourneyGeneratorModal } from "./components/journey-editor/JourneyGeneratorModal";
+import type { GeoLocation } from "./features/journey/journeyTypes";
 import { calculateRouteCostSummary, calculateRouteDurationSummary } from "./features/journey/journeyCalculations";
 import { Edit3, Eye, Info, Compass } from "lucide-react";
 
@@ -32,6 +34,7 @@ export function App() {
     handleUpdateRoute,
     handleUpdateHeader,
     handleCreateNewJourney,
+    handleLoadGeneratedJourney,
     handleLoadDemo,
     handleClearJourney,
   } = useJourneyState();
@@ -41,6 +44,9 @@ export function App() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isEmailOpen, setIsEmailOpen] = useState(false);
   const [isDemoGalleryOpen, setIsDemoGalleryOpen] = useState(false);
+  const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
+  const [generatorOrigin, setGeneratorOrigin] = useState<GeoLocation | undefined>();
+  const [generatorDestination, setGeneratorDestination] = useState<GeoLocation | undefined>();
 
   if (isEmbed && journey) {
     return <EmbedView journey={journey} />;
@@ -75,6 +81,11 @@ export function App() {
         <WelcomeScreen
           onCreateJourney={handleCreateNewJourney}
           onOpenDemoGallery={() => setIsDemoGalleryOpen(true)}
+          onOpenGenerator={(originLoc, destLoc) => {
+            setGeneratorOrigin(originLoc);
+            setGeneratorDestination(destLoc);
+            setIsGeneratorOpen(true);
+          }}
         />
       )}
 
@@ -149,6 +160,13 @@ export function App() {
                 originLocation={journey.originLocation}
                 destinationLocation={journey.destinationLocation}
                 onUpdate={handleUpdateHeader}
+                onOpenGenerator={() => {
+                  if (journey.originLocation && journey.destinationLocation) {
+                    setGeneratorOrigin(journey.originLocation);
+                    setGeneratorDestination(journey.destinationLocation);
+                    setIsGeneratorOpen(true);
+                  }
+                }}
               />
 
               <RouteTabSelector
@@ -253,6 +271,18 @@ export function App() {
         isOpen={isDemoGalleryOpen}
         onClose={() => setIsDemoGalleryOpen(false)}
         onLoadDemo={handleLoadDemo}
+      />
+
+      <JourneyGeneratorModal
+        isOpen={isGeneratorOpen}
+        origin={generatorOrigin}
+        destination={generatorDestination}
+        onClose={() => setIsGeneratorOpen(false)}
+        onRoutesGenerated={(generatedRoutes, title) => {
+          if (generatorOrigin && generatorDestination) {
+            handleLoadGeneratedJourney(generatedRoutes, generatorOrigin, generatorDestination, title);
+          }
+        }}
       />
 
       {journey && (
